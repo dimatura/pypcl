@@ -22,9 +22,8 @@
 
 namespace pypcl {
 
-//PCL_INSTANTIATE(pcl::for_each_type, PCL_XYZ_POINT_TYPES);
 
-py::array pclpc2_as_ndarray(const PCLPC2& pc) {
+py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle=true) {
   py::list names, formats, offsets;
 
   ssize_t itemsize = 0;
@@ -78,9 +77,11 @@ py::array pclpc2_as_ndarray(const PCLPC2& pc) {
     strides.push_back(pc.point_step);
   }
   // TODO figure out object/handle for refcounting
-  py::object obj(py::cast(pc));
-  py::array arr(dt, shape, strides, &pc.data[0], obj);
-  return arr;
+  if (use_handle) {
+    py::object obj(py::cast(pc));
+    return py::array(dt, shape, strides, &pc.data[0], obj);
+  }
+  return py::array(dt, shape, strides, &pc.data[0]);
 }
 
 PCLPC2::Ptr _pclpc2_from_ndarray(const py::array& arr,
@@ -217,6 +218,70 @@ py::array pointcloud_to_ndarray(const pcl::PointCloud<PointT>& pc) {
 
 }
 
+template <class PointT>
+py::array pointcloud_to_ndarray2(const pcl::PointCloud<PointT>& pc) {
+  std::vector<pcl::PCLPointField> fields;
+  pcl::detail::FieldAdder<PointT> field_adder(fields);
+  pcl::for_each_type<typename pcl::traits::fieldList<PointT>::type>(field_adder);
+
+  py::list names, formats, offsets;
+
+  ssize_t itemsize = 0;
+  for (const auto& field : fields) {
+    names.append(field.name);
+    switch (field.datatype) {
+      case pcl::PCLPointField::UINT8:
+        formats.append("u1");
+        itemsize += 1;
+        break;
+      case pcl::PCLPointField::UINT16:
+        formats.append("u2");
+        itemsize += 2;
+        break;
+      case pcl::PCLPointField::INT32:
+        formats.append("i4");
+        itemsize += 4;
+        break;
+      case pcl::PCLPointField::UINT32:
+        formats.append("u4");
+        itemsize += 4;
+        break;
+      case pcl::PCLPointField::FLOAT32:
+        formats.append("f4");
+        itemsize += 4;
+        break;
+      case pcl::PCLPointField::FLOAT64:
+        formats.append("f8");
+        itemsize += 8;
+        break;
+      default:
+        throw std::runtime_error("unsupported data type");
+        break;
+    }
+    offsets.append(field.offset);
+  }
+  // TODO not quite the same due to padding -
+  // however, the 'correct' itemsize seems to give wrong result
+  //ssize_t itemsize = pc.point_step;
+  py::dtype dt(names, formats, offsets, itemsize);
+
+  std::vector<ssize_t> shape, strides;
+  // two cases - structured vs unstructured
+  if (pc.height == 1) {
+    shape.push_back(pc.width);
+    strides.push_back(sizeof(PointT));
+  } else {
+    shape.push_back(pc.height);
+    shape.push_back(pc.width);
+    strides.push_back(sizeof(PointT)*pc.width);
+    strides.push_back(sizeof(PointT));
+  }
+  // TODO figure out object/handle for refcounting
+  py::object obj(py::cast(pc));
+  return py::array(dt, shape, strides, reinterpret_cast<const uint8_t*>(&pc.points[0]), obj);
+}
+
+
 template <class PointCloudT>
 void export_pointcloud(py::module& m, const char* name) {
   py::class_<PointCloudT, typename PointCloudT::Ptr>(m, name)
@@ -237,7 +302,23 @@ void export_pointcloud(py::module& m, const char* name) {
         return out;
       })
       .def("to_ndarray", [](PointCloudT& self) {
+        pcl::PCLPointCloud2 tmp;
+        pcl::toPCLPointCloud2(self, tmp);
+        // avoid deallocation when tmp goes out of scope
+        // TODO should I use self as handle instead?
+        py::array out = pclpc2_to_ndarray(tmp, false);
+        return out;
+      })
+      .def("to_ndarray1", [](PointCloudT& self) {
         return pointcloud_to_ndarray<typename PointCloudT::PointType>(self);
+      })
+      .def("to_ndarray2", [](PointCloudT& self) {
+        return pointcloud_to_ndarray2<typename PointCloudT::PointType>(self);
+      })
+      .def_static("from_pclpc2", [](const PCLPC2& msg) {
+        typename PointCloudT::Ptr pc(new PointCloudT);
+        pcl::fromPCLPointCloud2(msg, *pc);
+        return pc;
       })
       .def("empty", &PointCloudT::empty)
       .def("cat", [](PointCloudT& self, const PointCloudT& other) {
@@ -289,7 +370,7 @@ void export_pclpointcloud2(py::module& m) {
       .def_readwrite("point_step", &PCLPC2::point_step)
       .def_readwrite("row_step", &PCLPC2::row_step)
       .def_readwrite("is_dense", &PCLPC2::is_dense)
-      .def("to_ndarray", &pclpc2_as_ndarray)
+      .def("to_ndarray", &pclpc2_to_ndarray, py::arg("use_handle")=true)
       .def_static("from_ndarray", &_pclpc2_from_ndarray)
 	    .def("info", [](const PCLPC2& pc) {
         std::stringstream s;
