@@ -2,11 +2,14 @@
 #include <cmath>
 #include <limits>
 
-#include <pcl/common/common.h>
 #include <pcl/conversions.h>
 #include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <pcl/point_traits.h>
 #include <pcl/for_each_type.h>
+#include <pcl/PCLPointCloud2.h>
+#include <pcl/PCLPointField.h>
+#include <pcl/point_types_conversion.h>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
@@ -18,6 +21,8 @@
 #include "tinyformat.h"
 
 namespace pypcl {
+
+//PCL_INSTANTIATE(pcl::for_each_type, PCL_XYZ_POINT_TYPES);
 
 py::array pclpc2_as_ndarray(const PCLPC2& pc) {
   py::list names, formats, offsets;
@@ -133,7 +138,10 @@ struct FieldAdder {
 
   template<typename U> void operator() () {
     names_.append(pcl::traits::name<PointT, U>::value);
-    offsets_.append(pcl::traits::offset<PointT, U>::value);
+    //offsets_.append(pcl::traits::offset<PointT, U>::value);
+    pcl::traits::offset<PointT, U> offset;
+    size_t offset_value = offset.value;
+    offsets_.append(offset_value);
     int datatype = pcl::traits::datatype<PointT, U>::value;
     switch (datatype) {
       case pcl::PCLPointField::UINT8:
@@ -170,15 +178,13 @@ struct FieldAdder {
 };
 
 template <class PointT>
-py::array pointcloud_to_ndarray(pcl::PointCloud<PointT>& pc) {
+py::array pointcloud_to_ndarray(const pcl::PointCloud<PointT>& pc) {
   //using PointT = PointCloudT::PointType;
 
   py::list names, formats, offsets;
   std::vector<int> sizes;
-  pcl::for_each_type<typename pcl::traits::fieldList<PointT>::type>(FieldAdder<PointT>(names,
-                                                                                       formats,
-                                                                                       offsets,
-                                                                                       sizes));
+  FieldAdder<PointT> field_adder(names, formats, offsets, sizes);
+  pcl::for_each_type<typename pcl::traits::fieldList<PointT>::type>(field_adder);
   int itemsize = 0;
   for (int it : sizes) {
     itemsize += it;
@@ -205,7 +211,7 @@ py::array pointcloud_to_ndarray(pcl::PointCloud<PointT>& pc) {
   py::array arr(dt,
                 shape,
                 strides,
-                reinterpret_cast<uint8_t*>(&pc.points[0]),
+                reinterpret_cast<const uint8_t*>(&pc.points[0]),
                 obj);
   return arr;
 
@@ -442,6 +448,7 @@ PCXYZ::Ptr ndarray_to_pcxyz(ndarrayXf arr) {
 
 
 void export_pointcloud(py::module& m) {
+
   export_quaternion(m);
   export_pointcloud<pcl::PointCloud<pcl::PointXYZ>>(m, "PointCloudXYZ");
   export_pclpointcloud2(m);
