@@ -27,7 +27,7 @@ pybind11_add_module(libpypcl
     src/module.cpp
     src/pointcloud.cpp
     src/transform.cpp
-    #src/registration.cpp
+    src/registration.cpp
 )
 
 #message("pcl_libraries: " ${PCL_LIBRARIES})

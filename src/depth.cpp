@@ -69,11 +69,11 @@ PCXYZ::Ptr depth_img_to_pcxyz(const ndarray2f& depth_img,
   return xyz_pc;
 }
 
-ndarray2f disp_img_to_depth_img(const ndarray2u2& disp_img,
-                                int subpx_factor,
-                                float Tx,
-                                bool mask_invalid,
-                                uint16_t invalid_value) {
+ndarray2f disp_u2_img_to_depth_img(const ndarray2u2& disp_img,
+                                    int subpx_factor,
+                                    float Tx,
+                                    bool mask_invalid,
+                                    uint16_t invalid_value) {
   size_t height = disp_img.shape(0);
   size_t width = disp_img.shape(1);
   ndarray2f depth_img({height, width});
@@ -94,6 +94,27 @@ ndarray2f disp_img_to_depth_img(const ndarray2u2& disp_img,
 }
 
 
+ndarray2f disp_f4_img_to_depth_img(const ndarray2f& disp_img,
+                                   int subpx_factor,
+                                   float Tx) {
+  size_t height = disp_img.shape(0);
+  size_t width = disp_img.shape(1);
+  ndarray2f depth_img({height, width});
+  auto disp_img_buf = disp_img.unchecked();
+  auto depth_img_buf = depth_img.mutable_unchecked();
+  float constant = -Tx*subpx_factor;
+  for (int v=0; v < height; ++v) {
+    for (int u=0; u < width; ++u) {
+      float disp = disp_img_buf(v, u);
+      if (!std::isfinite(disp)) {
+        depth_img_buf(v, u) = std::numeric_limits<float>::quiet_NaN();
+      } else {
+        depth_img_buf(v, u) = constant/disp;
+      }
+    }
+  }
+  return depth_img;
+}
 
 void export_depth(py::module& m) {
   m.def("depth_img_to_pcxyz",
@@ -105,14 +126,19 @@ void export_depth(py::module& m) {
         py::arg("max_valid_depth"),
         py::arg("organized")=false);
 
-  m.def("disp_img_to_depth_img",
-        &disp_img_to_depth_img,
+  m.def("disp_u2_img_to_depth_img",
+        &disp_u2_img_to_depth_img,
         py::arg("disp_img"),
         py::arg("subpx_factor"),
         py::arg("Tx"),
         py::arg("mask_invalid"),
         py::arg("invalid_value"));
 
+  m.def("disp_f4_img_to_depth_img",
+        &disp_f4_img_to_depth_img,
+        py::arg("disp_img"),
+        py::arg("subpx_factor"),
+        py::arg("Tx"));
 }
 
 }

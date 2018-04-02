@@ -9,12 +9,12 @@ void export_features(py::module& m);
 void export_filters(py::module& m);
 void export_io(py::module& m);
 void export_transform(py::module& m);
+void export_registration(py::module& m);
 #if 0
 void export_misc(py::module& m);
 void export_pinhole_camera_model(py::module& m);
 void export_point_projector(py::module& m);
 void export_stereo_camera_model(py::module& m);
-void export_icp(py::module& m);
 //void exportPcRasterizer();
 //void exportTriangulation();
 //void exportDistortion();
@@ -29,12 +29,12 @@ PYBIND11_MODULE(libpypcl, m) {
   pypcl::export_filters(m);
   pypcl::export_io(m);
   pypcl::export_transform(m);
+  pypcl::export_registration(m);
 #if 0
   pypc::export_misc(m);
   pypc::export_pinhole_camera_model(m);
   pypc::export_point_projector(m);
   pypc::export_stereo_camera_model(m);
-  pypc::export_icp(m);
   //pypc::exportPcRasterizer(m);
   //pypc::exportTriangulation(m);
   //pypc::exportDistortion(m);

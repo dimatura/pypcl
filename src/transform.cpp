@@ -69,12 +69,14 @@ py::object transform_pc_rt(typename pcl::PointCloud<PointT>::Ptr pc,
 
 // TODO inplace for now
 // TODO only float xyz for now
-void transform_pclpc2_mat(pcl::PCLPointCloud2::Ptr pc,
-                          const ndarray2f& M) {
+PCLPC2::Ptr transform_pclpc2_mat(pcl::PCLPointCloud2::Ptr pc,
+                                 const ndarray2f& M) {
   if (!((M.shape(0) == 3 && M.shape(1) == 3) ||
         (M.shape(0) == 4 && M.shape(1) == 4))) {
     throw std::runtime_error("M must be 3x3 or 4x4");
   }
+
+  PCLPC2::Ptr outpc(new PCLPC2(*pc));
 
   Eigen::Matrix4f M2 = Eigen::Matrix4f::Identity();
   // in case input is 3x3 rot matrix
@@ -84,8 +86,9 @@ void transform_pclpc2_mat(pcl::PCLPointCloud2::Ptr pc,
       M2(i, j) = Mbuf(i, j);
     }
   }
+  //py::print("foo");
 
-  PointCloud2Iterator<float> iter_x(*pc, "x");
+  PointCloud2Iterator<float> iter_x(*outpc, "x");
   while (iter_x != iter_x.end()) {
     Eigen::Vector4f p(iter_x[0],
                       iter_x[1],
@@ -95,19 +98,21 @@ void transform_pclpc2_mat(pcl::PCLPointCloud2::Ptr pc,
     iter_x[0] = p2.x();
     iter_x[1] = p2.y();
     iter_x[2] = p2.z();
+    ++iter_x;
   }
+  return outpc;
 }
 
-// TODO inplace for now
 // TODO only float xyz for now
-void transform_pclpc2_rt(pcl::PCLPointCloud2::Ptr pc,
+PCLPC2::Ptr transform_pclpc2_rt(pcl::PCLPointCloud2::Ptr pc,
                          const Eigen::Quaternionf& rotation,
                          const Eigen::Vector3f& translation) {
   //AngleAxisd( M_PI/4., Vector3d(0, 0, 1));
 
   Eigen::Affine3f M = Eigen::Translation3f(translation)*rotation;
+  PCLPC2::Ptr outpc(new PCLPC2(*pc));
 
-  PointCloud2Iterator<float> iter_x(*pc, "x");
+  PointCloud2Iterator<float> iter_x(*outpc, "x");
   while (iter_x != iter_x.end()) {
     Eigen::Vector3f p(iter_x[0],
                       iter_x[1],
@@ -116,8 +121,9 @@ void transform_pclpc2_rt(pcl::PCLPointCloud2::Ptr pc,
     iter_x[0] = p2.x();
     iter_x[1] = p2.y();
     iter_x[2] = p2.z();
+    ++iter_x;
   }
-
+  return outpc;
 }
 
 

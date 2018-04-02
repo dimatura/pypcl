@@ -301,7 +301,8 @@ void export_pointcloud(py::module& m, const char* name) {
            return ss.str();
       })
       .def("copy", [](const PointCloudT& self) {
-           return PointCloudT(self);
+           typename PointCloudT::Ptr pc(new PointCloudT(self));
+           return pc;
       })
       //.def("set_from_ndarray", &set_pc_from_ndarray<PointCloudT>)
       //.def_buffer(&pcxyz_to_buffer_info);
@@ -341,6 +342,10 @@ void export_pclpointcloud2(py::module& m) {
       .def_readwrite("is_dense", &PCLPC2::is_dense)
       .def("to_ndarray", &pclpc2_to_ndarray, py::arg("use_handle")=true)
       .def_static("from_ndarray", &_pclpc2_from_ndarray)
+      .def("copy", [](const PCLPC2& self) {
+           PCLPC2::Ptr pc2(new PCLPC2(self));
+           return pc2;
+      })
 	    .def("info", [](const PCLPC2& pc) {
         std::stringstream s;
         s << "PCLPointCloud2:" << std::endl;
