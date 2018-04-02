@@ -22,12 +22,11 @@
 
 namespace pypcl {
 
-
-py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle=true) {
+static
+py::dtype _pcl_pointfields_to_dt(const std::vector<pcl::PCLPointField>& fields) {
   py::list names, formats, offsets;
-
   ssize_t itemsize = 0;
-  for (const auto& field : pc.fields) {
+  for (const auto& field : fields) {
     names.append(field.name);
     switch (field.datatype) {
       case pcl::PCLPointField::UINT8:
@@ -64,6 +63,13 @@ py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle=true) {
   // however, the 'correct' itemsize seems to give wrong result
   //ssize_t itemsize = pc.point_step;
   py::dtype dt(names, formats, offsets, itemsize);
+  return dt;
+}
+
+
+py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle=true) {
+
+  py::dtype dt = _pcl_pointfields_to_dt(pc.fields);
 
   std::vector<ssize_t> shape, strides;
   // two cases - structured vs unstructured
@@ -83,6 +89,7 @@ py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle=true) {
   }
   return py::array(dt, shape, strides, &pc.data[0]);
 }
+
 
 PCLPC2::Ptr _pclpc2_from_ndarray(const py::array& arr,
                                 const py::list& fields) {
@@ -178,6 +185,7 @@ struct FieldAdder {
   std::vector<int>& sizes_;
 };
 
+
 template <class PointT>
 py::array pointcloud_to_ndarray(const pcl::PointCloud<PointT>& pc) {
   //using PointT = PointCloudT::PointType;
@@ -218,52 +226,13 @@ py::array pointcloud_to_ndarray(const pcl::PointCloud<PointT>& pc) {
 
 }
 
+
 template <class PointT>
 py::array pointcloud_to_ndarray2(const pcl::PointCloud<PointT>& pc) {
   std::vector<pcl::PCLPointField> fields;
   pcl::detail::FieldAdder<PointT> field_adder(fields);
   pcl::for_each_type<typename pcl::traits::fieldList<PointT>::type>(field_adder);
-
-  py::list names, formats, offsets;
-
-  ssize_t itemsize = 0;
-  for (const auto& field : fields) {
-    names.append(field.name);
-    switch (field.datatype) {
-      case pcl::PCLPointField::UINT8:
-        formats.append("u1");
-        itemsize += 1;
-        break;
-      case pcl::PCLPointField::UINT16:
-        formats.append("u2");
-        itemsize += 2;
-        break;
-      case pcl::PCLPointField::INT32:
-        formats.append("i4");
-        itemsize += 4;
-        break;
-      case pcl::PCLPointField::UINT32:
-        formats.append("u4");
-        itemsize += 4;
-        break;
-      case pcl::PCLPointField::FLOAT32:
-        formats.append("f4");
-        itemsize += 4;
-        break;
-      case pcl::PCLPointField::FLOAT64:
-        formats.append("f8");
-        itemsize += 8;
-        break;
-      default:
-        throw std::runtime_error("unsupported data type");
-        break;
-    }
-    offsets.append(field.offset);
-  }
-  // TODO not quite the same due to padding -
-  // however, the 'correct' itemsize seems to give wrong result
-  //ssize_t itemsize = pc.point_step;
-  py::dtype dt(names, formats, offsets, itemsize);
+  py::dtype dt = _pcl_pointfields_to_dt(fields);
 
   std::vector<ssize_t> shape, strides;
   // two cases - structured vs unstructured
