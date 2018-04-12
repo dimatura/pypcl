@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <pcl/point_cloud.h>
+#include <pcl/PCLPointCloud2.h>
 #include <pcl/point_types.h>
 #include <pybind11/numpy.h>
 #include <boost/shared_ptr.hpp>
@@ -16,6 +17,7 @@ namespace py = pybind11;
 using PCXYZ = pcl::PointCloud<pcl::PointXYZ>;
 using PCXYZRGB = pcl::PointCloud<pcl::PointXYZRGB>;
 using PCXYZI = pcl::PointCloud<pcl::PointXYZI>;
+using PCXYZL = pcl::PointCloud<pcl::PointXYZL>;
 using PCN = pcl::PointCloud<pcl::Normal>;
 using PCLPC2 = pcl::PCLPointCloud2;
 

@@ -23,35 +23,29 @@
 namespace pypcl {
 
 static
-py::dtype _pcl_pointfields_to_dt(const std::vector<pcl::PCLPointField>& fields) {
+py::dtype _pcl_pointfields_to_dt(const std::vector<pcl::PCLPointField>& fields,
+                                 ssize_t point_step) {
   py::list names, formats, offsets;
-  ssize_t itemsize = 0;
   for (const auto& field : fields) {
     names.append(field.name);
     switch (field.datatype) {
       case pcl::PCLPointField::UINT8:
         formats.append("u1");
-        itemsize += 1;
         break;
       case pcl::PCLPointField::UINT16:
         formats.append("u2");
-        itemsize += 2;
         break;
       case pcl::PCLPointField::INT32:
         formats.append("i4");
-        itemsize += 4;
         break;
       case pcl::PCLPointField::UINT32:
         formats.append("u4");
-        itemsize += 4;
         break;
       case pcl::PCLPointField::FLOAT32:
         formats.append("f4");
-        itemsize += 4;
         break;
       case pcl::PCLPointField::FLOAT64:
         formats.append("f8");
-        itemsize += 8;
         break;
       default:
         throw std::runtime_error("unsupported data type");
@@ -62,14 +56,15 @@ py::dtype _pcl_pointfields_to_dt(const std::vector<pcl::PCLPointField>& fields) 
   // TODO not quite the same due to padding -
   // however, the 'correct' itemsize seems to give wrong result
   //ssize_t itemsize = pc.point_step;
-  py::dtype dt(names, formats, offsets, itemsize);
+  //py::dtype dt(names, formats, offsets, itemsize);
+  py::dtype dt(names, formats, offsets, point_step);
   return dt;
 }
 
 
 py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle=true) {
 
-  py::dtype dt = _pcl_pointfields_to_dt(pc.fields);
+  py::dtype dt = _pcl_pointfields_to_dt(pc.fields, pc.point_step);
 
   std::vector<ssize_t> shape, strides;
   // two cases - structured vs unstructured
@@ -92,7 +87,7 @@ py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle=true) {
 
 
 PCLPC2::Ptr _pclpc2_from_ndarray(const py::array& arr,
-                                const py::list& fields) {
+                                 const py::list& fields) {
   PCLPC2::Ptr pc(new PCLPC2);
   int n = py::len(fields);
   for (int i=0; i < n; ++i) {
@@ -121,14 +116,21 @@ PCLPC2::Ptr _pclpc2_from_ndarray(const py::array& arr,
   }
   pc->point_step = arr.itemsize();
   if (arr.ndim() == 1) {
+    // unorganized cloud
     pc->row_step = static_cast<uint32_t>(arr.itemsize()*arr.shape(0));
     pc->width = arr.shape(0);
     pc->height = 1;
   } else {
+    // organized cloud
     pc->row_step = static_cast<uint32_t>(arr.strides(0));
     pc->width = arr.shape(0);
     pc->height = arr.shape(1);
   }
+
+  const uint8_t* arr_begin = reinterpret_cast<const uint8_t*>(arr.data());
+  const uint8_t* arr_end = reinterpret_cast<const uint8_t*>(arr.data())+arr.nbytes();
+  // TODO is it even possible to avoid copy here?
+  pc->data.insert(pc->data.end(), arr_begin, arr_end);
   return pc;
 }
 
@@ -232,7 +234,7 @@ py::array pointcloud_to_ndarray2(const pcl::PointCloud<PointT>& pc) {
   std::vector<pcl::PCLPointField> fields;
   pcl::detail::FieldAdder<PointT> field_adder(fields);
   pcl::for_each_type<typename pcl::traits::fieldList<PointT>::type>(field_adder);
-  py::dtype dt = _pcl_pointfields_to_dt(fields);
+  py::dtype dt = _pcl_pointfields_to_dt(fields, sizeof(PointT));
 
   std::vector<ssize_t> shape, strides;
   // two cases - structured vs unstructured
@@ -521,6 +523,8 @@ void export_pointcloud(py::module& m) {
         &ndarray_to_pcxyz,
         py::arg("arr"));
 
+  m.def("_pclpc2_from_ndarray",
+        &_pclpc2_from_ndarray);
 }
 
 }

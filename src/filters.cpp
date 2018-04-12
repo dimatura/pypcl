@@ -26,12 +26,16 @@ PCLPC2::Ptr passthrough_filter(const PCLPC2::Ptr pc,
                                float maxval,
                                bool keep_organized) {
   // unintuitive name; it can also crop cloud.
-  PCLPC2::Ptr pc_out(new PCLPC2());
+  if (keep_organized && pc->height == 1) {
+    throw std::runtime_error("keep_organized should only be used for organized clouds.");
+  }
   pcl::PassThrough<PCLPC2> pass;
   pass.setInputCloud(pc);
   pass.setFilterFieldName(field);
   pass.setFilterLimits(minval, maxval);
   pass.setKeepOrganized(keep_organized);
+
+  PCLPC2::Ptr pc_out(new PCLPC2());
   pass.filter(*pc_out);
   return pc_out;
 }
@@ -40,6 +44,10 @@ PCLPC2::Ptr extract_indices(const PCLPC2::Ptr pc,
                             const ndarray1i& indices,
                             bool set_negative,
                             bool keep_organized) {
+  if (keep_organized && pc->height == 1) {
+    throw std::runtime_error("keep_organized should only be used for organized clouds.");
+  }
+
   auto indices_buf = indices.unchecked();
   std::vector<int> indices2(indices_buf.data(0),
                             indices_buf.data(0)+indices_buf.size());
@@ -71,6 +79,9 @@ PCLPC2::Ptr statistical_outlier_removal(const PCLPC2::Ptr pc,
                                         float stddev,
                                         bool keep_organized) {
   // for radius, params. radius 0.05, minneighbors 800
+  if (keep_organized && pc->height == 1) {
+    throw std::runtime_error("keep_organized should only be used for organized clouds.");
+  }
 
   PCXYZ::Ptr xyz_cloud_pre(new PCXYZ()), xyz_cloud(new PCXYZ());
   PCLPC2::Ptr output(new PCLPC2());
@@ -121,6 +132,10 @@ PCLPC2::Ptr crop_box(PCLPC2::Ptr pc,
                      const Eigen::Vector3f& translation,
                      const Eigen::Vector3f& orientation,
                      bool keep_organized) {
+
+  if (keep_organized && pc->height == 1) {
+    throw std::runtime_error("keep_organized should only be used for organized clouds.");
+  }
   pcl::CropBox<PCLPC2> filter;
   filter.setInputCloud(pc);
   filter.setMin(minpt);
@@ -150,19 +165,31 @@ PCLPC2::Ptr radius_outlier_removal(PCLPC2::Ptr pc,
 
 void export_filters(py::module& m) {
 
+  // this doesn't work as passthrough<pclpc2> inherits from filter,
+  // while passthrough<pc<pointT>> inherits from filterindices. why ????
+  //void (pcl::PassThrough<PCLPC2>::* filter1)(PCLPC2&) = &pcl::PassThrough<PCLPC2>::filter;
+  //void (pcl::PassThrough<PCLPC2>::* filter2)(std::vector<int>&) = &pcl::PassThrough<PCLPC2>::filter;
+  // also cropbox<pclpc2> inherits from filterindices. marvelous!
+
 #if 0
-  // TODO to overload filter, we need to specify signature explicitly
+  void (pcl::PassThrough<pcl::PCLPointCloud2>::* filter2)(std::vector<int>&) = &pcl::PassThrough<pcl::PCLPointCloud2>::filter;
+  // honestly wrapping like this is terrible and also really annoying to use
   py::class_<pcl::PassThrough<PCLPC2>>(m, "PassThrough")
+      .def(py::init<>())
       .def("set_input_cloud", &pcl::PassThrough<PCLPC2>::setInputCloud)
       .def("set_filter_field_name", &pcl::PassThrough<PCLPC2>::setFilterFieldName)
       .def("set_filter_limits", &pcl::PassThrough<PCLPC2>::setFilterLimits)
       .def("set_keep_organized", &pcl::PassThrough<PCLPC2>::setKeepOrganized)
       .def("filter", &pcl::PassThrough<PCLPC2>::filter)
-      ;
-
-  py::class_<pcl::ExtractIndices<PCLPC2>>(m, "ExtractIndices")
-      .def("set_input_cloud", &pcl::ExtractIndices<PCLPC2>::setInputCloud)
-      .def("set_negative", &pcl::ExtractIndices<PCLPC2>::setNegative)
+      .def("removed_indices", [](pcl::PassThrough<PCLPC2>& self) {
+        auto indices = self.getRemovedIndices();
+        ndarray1i indices2(indices->size());
+        auto indices2buf = indices2.mutable_unchecked();
+        for (int i; i < indices->size(); ++i) {
+          indices2buf(i) = indices->at(i);
+        }
+        return indices2;
+      })
       ;
 #endif
 
@@ -177,14 +204,14 @@ void export_filters(py::module& m) {
         py::arg("field"),
         py::arg("minval"),
         py::arg("maxval"),
-        py::arg("keep_organized")=true);
+        py::arg("keep_organized")=false);
 
   m.def("extract_indices",
         &extract_indices,
         py::arg("pc"),
         py::arg("indices"),
         py::arg("set_negative")=false,
-        py::arg("keep_organized")=true);
+        py::arg("keep_organized")=false);
 
   m.def("voxel_grid_filter",
         &voxel_grid_filter,
@@ -196,7 +223,7 @@ void export_filters(py::module& m) {
         py::arg("pc"),
         py::arg("meank")=50,
         py::arg("stddev")=1.0,
-        py::arg("keep_organized")=true);
+        py::arg("keep_organized")=false);
 
   m.def("radius_outlier_removal",
         &radius_outlier_removal,
@@ -211,7 +238,7 @@ void export_filters(py::module& m) {
         py::arg("maxpt"),
         py::arg("translation")=Eigen::Vector3f::Zero(),
         py::arg("orientation")=Eigen::Vector3f::Zero(),
-        py::arg("keep_organized")=true);
+        py::arg("keep_organized")=false);
 
 }
 

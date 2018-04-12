@@ -17,7 +17,8 @@ namespace py = pybind11;
 PCLPC2::Ptr integral_image_normals_estimation(const PCLPC2::Ptr organized_pc,
                                               const std::string method,
                                               float max_depth_change_factor,
-                                              float normal_smoothing_size) {
+                                              float normal_smoothing_size,
+                                              bool depth_dependent_smoothing) {
 
   PCXYZ::Ptr xyz(new PCXYZ);
   pcl::fromPCLPointCloud2(*organized_pc, *xyz);
@@ -36,7 +37,7 @@ PCLPC2::Ptr integral_image_normals_estimation(const PCLPC2::Ptr organized_pc,
   ne.setNormalSmoothingSize(normal_smoothing_size);
   ne.setMaxDepthChangeFactor(max_depth_change_factor);
   //ne.setRectSize(8, 8); // width height
-  ne.setDepthDependentSmoothing(true); // not sure what this does
+  ne.setDepthDependentSmoothing(depth_dependent_smoothing); // not sure what this does
   //ne.useSensorOriginAsViewPoint();
   ne.setInputCloud(xyz);
   ne.compute(normals);
@@ -75,7 +76,8 @@ void export_features(py::module& m) {
         py::arg("organized_pc"),
         py::arg("method") = "average_3d_gradient",
         py::arg("max_depth_change_factor") = 0.02f,
-        py::arg("normal_smoothing_size") = 0.2f);
+        py::arg("normal_smoothing_size") = 0.2f,
+        py::arg("depth_dependent_smoothing") = true);
 
   m.def("normals_estimation",
         &normals_estimation,
