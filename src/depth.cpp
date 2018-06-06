@@ -70,10 +70,10 @@ PCXYZ::Ptr depth_img_to_pcxyz(const ndarray2f& depth_img,
 }
 
 ndarray2f disp_u2_img_to_depth_img(const ndarray2u2& disp_img,
-                                    int subpx_factor,
-                                    float Tx,
-                                    bool mask_invalid,
-                                    uint16_t invalid_value) {
+                                   int subpx_factor,
+                                   float Tx,
+                                   bool mask_invalid,
+                                   uint16_t invalid_value) {
   size_t height = disp_img.shape(0);
   size_t width = disp_img.shape(1);
   ndarray2f depth_img({height, width});
