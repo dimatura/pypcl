@@ -128,13 +128,13 @@ PCLPC2::Ptr transform_pclpc2_rt(pcl::PCLPointCloud2::Ptr pc,
 
 
 void export_transform(py::module& m) {
-  m.def("transform_pcxyz_rt",
+  m.def("transform_pcxyz_mat",
         &transform_pc_mat<pcl::PointXYZ>,
         py::arg("pc"),
         py::arg("M"),
         py::arg("inplace")=false);
 
-  m.def("transform_pcxyz_mat",
+  m.def("transform_pcxyz_rt",
         &transform_pc_rt<pcl::PointXYZ>,
         py::arg("pc"),
         py::arg("rotation"),
