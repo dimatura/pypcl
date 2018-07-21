@@ -97,6 +97,10 @@ void export_io(py::module& m) {
         &load_pcd<PCXYZ>,
         py::arg("fname"));
 
+  m.def("load_pcd_pcxyzrgb",
+        &load_pcd<PCXYZRGB>,
+        py::arg("fname"));
+
   m.def("save_pcd_pcxyz",
         &save_pcd<PCXYZ>,
         py::arg("cloud"),
