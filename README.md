@@ -1,10 +1,15 @@
 # pypcl
 
- - `cd cmake_example/docs`
- - `make html`
+Daniel Maturana, dimatura@gmail.com
+
+A pybind11-based Python wrapper for PCL.
+
+This is usable, but pre-beta stage code.
+
 
 ## License
 
-Pybind11 is provided under a BSD-style license that can be found in the LICENSE
-file. By using, distributing, or contributing to this project, you agree to the
-terms and conditions of this license.
+BSD. See LICENSE.
+
+Pybind11 (bundled) is provided under a BSD-style license that can be found in the pybind11-LICENSE
+file.
