@@ -138,8 +138,6 @@ Eigen::Vector3f pclpc2_centroid(const PCLPC2::Ptr pc) {
 }
 
 void export_common(py::module& m) {
-  //m.def("demean_pcxyz", pcl::demeanPointCloud(
-
   m.def("pclpc2_centroid",
         &pclpc2_centroid,
         py::arg("pc"));

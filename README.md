@@ -4,7 +4,8 @@ Daniel Maturana 2018, dimatura@gmail.com
 
 A pybind11-based Python wrapper for (a very small part of) PCL.
 
-It is usable, but incomplete and should be considered pre-beta. 
+It is usable, but incomplete and should be considered pre-beta.
+This is a 'scratch-my-own-itch' piece of code.
 
 ## Installation
 

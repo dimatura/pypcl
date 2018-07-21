@@ -13,7 +13,6 @@ namespace pypcl {
 
 namespace py = pybind11;
 
-
 PCXYZ::Ptr depth_img_to_pcxyz(const ndarray2f& depth_img,
                               float fx, float fy,
                               float cx, float cy,
@@ -115,6 +114,7 @@ ndarray2f disp_f4_img_to_depth_img(const ndarray2f& disp_img,
   }
   return depth_img;
 }
+
 
 void export_depth(py::module& m) {
   m.def("depth_img_to_pcxyz",

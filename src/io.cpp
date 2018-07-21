@@ -13,8 +13,6 @@ namespace pypcl {
 
 namespace py = pybind11;
 
-//PC_XYZ::Ptr load_pcd_pcxyz(const std::string& fname) {
-
 template<class PointCloudT>
 typename PointCloudT::Ptr load_pcd(const std::string& fname) {
   typename PointCloudT::Ptr cloud(new PointCloudT);

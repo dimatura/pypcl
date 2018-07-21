@@ -320,8 +320,7 @@ void export_pclpointcloud2(py::module& m) {
       .def_readwrite("datatype", &pcl::PCLPointField::datatype)
       .def_readwrite("count", &pcl::PCLPointField::count)
       ;
-
-  py::enum_<pcl::PCLPointField::PointFieldTypes>(PCLPointField, "PointFieldTypes")
+py::enum_<pcl::PCLPointField::PointFieldTypes>(PCLPointField, "PointFieldTypes")
       .value("INT8", pcl::PCLPointField::INT8)
       .value("UINT8", pcl::PCLPointField::UINT8)
       .value("INT16", pcl::PCLPointField::INT16)
@@ -505,9 +504,9 @@ PCXYZ::Ptr ndarray_to_pcxyz(ndarrayXf arr) {
 
 
 void export_pointcloud(py::module& m) {
-
   export_quaternion(m);
   export_pointcloud<pcl::PointCloud<pcl::PointXYZ>>(m, "PointCloudXYZ");
+  export_pointcloud<pcl::PointCloud<pcl::PointXYZRGB>>(m, "PointCloudXYZRGB");
   export_pclpointcloud2(m);
 
   m.def("xyz_img_to_pc",
