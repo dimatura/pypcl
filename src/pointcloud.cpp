@@ -500,6 +500,7 @@ PCXYZ::Ptr ndarray_to_pcxyz(ndarrayXf arr) {
     pc->width = arr.shape(1);
     pc->height = arr.shape(0);
   }
+  return pc;
 }
 
 
