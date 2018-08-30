@@ -91,8 +91,7 @@ PCLPC2::Ptr transform_pclpc2_mat(pcl::PCLPointCloud2::Ptr pc,
   PointCloud2Iterator<float> iter_x(*outpc, "x");
   while (iter_x != iter_x.end()) {
     Eigen::Vector4f p(iter_x[0],
-                      iter_x[1],
-                      iter_x[2],
+                      iter_x[1], iter_x[2],
                       1.);
     Eigen::Vector4f p2 = M2*p;
     iter_x[0] = p2.x();
