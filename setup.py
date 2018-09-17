@@ -61,7 +61,7 @@ setup(
     version='0.0.1',
     author='Daniel Maturana',
     author_email='dimatura@cmu.edu',
-    description='A test project using pybind11 and CMake',
+    description='A pybind11-based wrapper for a subset of PCL',
     long_description='',
     packages=['pypcl'],
     ext_modules=[CMakeExtension('libpypcl')],
