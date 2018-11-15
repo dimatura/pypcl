@@ -1,12 +1,12 @@
 #ifndef TYPEDEFS_H_6L21M3XB
 #define TYPEDEFS_H_6L21M3XB
 
-#include <cstdint>
-#include <pcl/point_cloud.h>
 #include <pcl/PCLPointCloud2.h>
+#include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pybind11/numpy.h>
 #include <boost/shared_ptr.hpp>
+#include <cstdint>
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, boost::shared_ptr<T>);
 
@@ -38,7 +38,6 @@ using ndarray3u1 = py::array_t<std::uint8_t, 3>;
 
 using ndarray2u2 = py::array_t<std::uint16_t, 2>;
 using ndarray3u2 = py::array_t<std::uint16_t, 3>;
-
 }
 
 #endif /* end of include guard: TYPEDEFS_H_6L21M3XB */

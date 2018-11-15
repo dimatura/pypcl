@@ -1,14 +1,14 @@
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
 #include <pcl/common/common.h>
 #include <pcl/conversions.h>
 #include <pcl/point_cloud.h>
 
-#include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
 
 #include <boost/shared_ptr.hpp>
 
@@ -118,7 +118,6 @@ Eigen::Vector3f pclpc2_centroid(const PCLPC2::Ptr pc) {
     return Eigen::Vector3f(std::numeric_limits<float>::quiet_NaN(),
                            std::numeric_limits<float>::quiet_NaN(),
                            std::numeric_limits<float>::quiet_NaN());
-
   }
   float n = static_cast<float>(valid_ix.size());
 
@@ -128,19 +127,13 @@ Eigen::Vector3f pclpc2_centroid(const PCLPC2::Ptr pc) {
     auto iter_x = iter_x0;
     iter_x += i;
     // TODO use Map
-    Eigen::Vector4f p(iter_x[0],
-                      iter_x[1],
-                      iter_x[2],
-                      0.);
-    centroid += (p/n);
+    Eigen::Vector4f p(iter_x[0], iter_x[1], iter_x[2], 0.);
+    centroid += (p / n);
   }
   return centroid.head<3>();
 }
 
 void export_common(py::module& m) {
-  m.def("pclpc2_centroid",
-        &pclpc2_centroid,
-        py::arg("pc"));
+  m.def("pclpc2_centroid", &pclpc2_centroid, py::arg("pc"));
 }
-
 }

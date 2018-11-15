@@ -1,19 +1,18 @@
-#include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
 
 #include <pcl/common/common.h>
 #include <pcl/io/pcd_io.h>
 
-#include "typedefs.h"
 #include "tinyformat.h"
-
+#include "typedefs.h"
 
 namespace pypcl {
 
 namespace py = pybind11;
 
-template<class PointCloudT>
+template <class PointCloudT>
 typename PointCloudT::Ptr load_pcd(const std::string& fname) {
   typename PointCloudT::Ptr cloud(new PointCloudT);
   using PointT = typename PointCloudT::PointType;
@@ -24,11 +23,10 @@ typename PointCloudT::Ptr load_pcd(const std::string& fname) {
   return cloud;
 }
 
-template<class PointCloudT>
+template <class PointCloudT>
 void save_pcd(const typename PointCloudT::Ptr cloud,
               const std::string& fname,
               const std::string& mode) {
-
   using PointT = typename PointCloudT::PointType;
   int ret = 0;
   if (mode == "ascii") {
@@ -93,13 +91,9 @@ void save_pcd_pclpc2(const PCLPC2::Ptr cloud,
 }
 
 void export_io(py::module& m) {
-  m.def("load_pcd_pcxyz",
-        &load_pcd<PCXYZ>,
-        py::arg("fname"));
+  m.def("load_pcd_pcxyz", &load_pcd<PCXYZ>, py::arg("fname"));
 
-  m.def("load_pcd_pcxyzrgb",
-        &load_pcd<PCXYZRGB>,
-        py::arg("fname"));
+  m.def("load_pcd_pcxyzrgb", &load_pcd<PCXYZRGB>, py::arg("fname"));
 
   m.def("save_pcd_pcxyz",
         &save_pcd<PCXYZ>,
@@ -110,7 +104,7 @@ void export_io(py::module& m) {
   m.def("load_pcd_pclpc2",
         &load_pcd_pclpc2,
         py::arg("fname"),
-        py::arg("load_viewpoint")=false);
+        py::arg("load_viewpoint") = false);
 
   m.def("save_pcd_pclpc2",
         &save_pcd_pclpc2,
@@ -120,5 +114,4 @@ void export_io(py::module& m) {
         py::arg("origin") = Eigen::Vector4f::Zero(),
         py::arg("orientation") = Eigen::Quaternionf::Identity());
 }
-
 }

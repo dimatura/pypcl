@@ -1,6 +1,6 @@
-#include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
 
 #include <pcl/common/common.h>
 #include <pcl/features/integral_image_normal.h>
@@ -19,26 +19,26 @@ PCLPC2::Ptr integral_image_normals_estimation(const PCLPC2::Ptr organized_pc,
                                               float max_depth_change_factor,
                                               float normal_smoothing_size,
                                               bool depth_dependent_smoothing) {
-
   PCXYZ::Ptr xyz(new PCXYZ);
   pcl::fromPCLPointCloud2(*organized_pc, *xyz);
 
   pcl::PointCloud<pcl::Normal> normals;
   pcl::IntegralImageNormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-  if (method=="average_3d_gradient") {
+  if (method == "average_3d_gradient") {
     ne.setNormalEstimationMethod(ne.AVERAGE_3D_GRADIENT);
-  } else if (method=="covariance_matrix") {
+  } else if (method == "covariance_matrix") {
     ne.setNormalEstimationMethod(ne.COVARIANCE_MATRIX);
-  } else if (method=="average_depth_change") {
+  } else if (method == "average_depth_change") {
     ne.setNormalEstimationMethod(ne.AVERAGE_DEPTH_CHANGE);
   } else {
     throw py::value_error("method not understood");
   }
   ne.setNormalSmoothingSize(normal_smoothing_size);
   ne.setMaxDepthChangeFactor(max_depth_change_factor);
-  //ne.setRectSize(8, 8); // width height
-  ne.setDepthDependentSmoothing(depth_dependent_smoothing); // not sure what this does
-  //ne.useSensorOriginAsViewPoint();
+  // ne.setRectSize(8, 8); // width height
+  // not sure what this does
+  ne.setDepthDependentSmoothing(depth_dependent_smoothing);
+  // ne.useSensorOriginAsViewPoint();
   ne.setInputCloud(xyz);
   ne.compute(normals);
 
@@ -49,14 +49,14 @@ PCLPC2::Ptr integral_image_normals_estimation(const PCLPC2::Ptr organized_pc,
   return output;
 }
 
-
 PCLPC2::Ptr normals_estimation(const PCLPC2::Ptr pc, float radius) {
   PCXYZ::Ptr xyz(new PCXYZ);
   pcl::fromPCLPointCloud2(*pc, *xyz);
-  //float radius = 2.0f;
+  // float radius = 2.0f;
   pcl::PointCloud<pcl::Normal> normals;
   pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
+      new pcl::search::KdTree<pcl::PointXYZ>());
   ne.setSearchMethod(tree);
   ne.setRadiusSearch(radius);
   ne.setInputCloud(xyz);
@@ -84,5 +84,4 @@ void export_features(py::module& m) {
         py::arg("pc"),
         py::arg("radius") = 2.0);
 }
-
 }

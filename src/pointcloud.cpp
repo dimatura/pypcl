@@ -1,30 +1,30 @@
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
-#include <pcl/conversions.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/point_traits.h>
-#include <pcl/for_each_type.h>
 #include <pcl/PCLPointCloud2.h>
 #include <pcl/PCLPointField.h>
+#include <pcl/conversions.h>
+#include <pcl/for_each_type.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_traits.h>
+#include <pcl/point_types.h>
 #include <pcl/point_types_conversion.h>
 
-#include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
 
 #include <boost/shared_ptr.hpp>
 
-#include "typedefs.h"
 #include "tinyformat.h"
+#include "typedefs.h"
 
 namespace pypcl {
 
-static
-py::dtype _pcl_pointfields_to_dt(const std::vector<pcl::PCLPointField>& fields,
-                                 ssize_t point_step) {
+static py::dtype _pcl_pointfields_to_dt(
+    const std::vector<pcl::PCLPointField>& fields,
+    ssize_t point_step) {
   py::list names, formats, offsets;
   for (const auto& field : fields) {
     names.append(field.name);
@@ -55,15 +55,13 @@ py::dtype _pcl_pointfields_to_dt(const std::vector<pcl::PCLPointField>& fields,
   }
   // TODO not quite the same due to padding -
   // however, the 'correct' itemsize seems to give wrong result
-  //ssize_t itemsize = pc.point_step;
-  //py::dtype dt(names, formats, offsets, itemsize);
+  // ssize_t itemsize = pc.point_step;
+  // py::dtype dt(names, formats, offsets, itemsize);
   py::dtype dt(names, formats, offsets, point_step);
   return dt;
 }
 
-
-py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle=true) {
-
+py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle = true) {
   py::dtype dt = _pcl_pointfields_to_dt(pc.fields, pc.point_step);
 
   std::vector<ssize_t> shape, strides;
@@ -85,12 +83,10 @@ py::array pclpc2_to_ndarray(const PCLPC2& pc, bool use_handle=true) {
   return py::array(dt, shape, strides, &pc.data[0]);
 }
 
-
-PCLPC2::Ptr _pclpc2_from_ndarray(const py::array& arr,
-                                 const py::list& fields) {
+PCLPC2::Ptr _pclpc2_from_ndarray(const py::array& arr, const py::list& fields) {
   PCLPC2::Ptr pc(new PCLPC2);
   int n = py::len(fields);
-  for (int i=0; i < n; ++i) {
+  for (int i = 0; i < n; ++i) {
     pcl::PCLPointField pf;
     py::tuple name_fmt_offset = fields[i].cast<py::tuple>();
     pf.name = name_fmt_offset[0].cast<std::string>();
@@ -98,7 +94,7 @@ PCLPC2::Ptr _pclpc2_from_ndarray(const py::array& arr,
     // TODO assumption
     pf.count = 1;
     std::string fmt = name_fmt_offset[1].attr("name").cast<std::string>();
-    //py::print(fmt);
+    // py::print(fmt);
     if (fmt == "float32") {
       pf.datatype = pcl::PCLPointField::FLOAT32;
     } else if (fmt == "float64") {
@@ -117,7 +113,7 @@ PCLPC2::Ptr _pclpc2_from_ndarray(const py::array& arr,
   pc->point_step = arr.itemsize();
   if (arr.ndim() == 1) {
     // unorganized cloud
-    pc->row_step = static_cast<uint32_t>(arr.itemsize()*arr.shape(0));
+    pc->row_step = static_cast<uint32_t>(arr.itemsize() * arr.shape(0));
     pc->width = arr.shape(0);
     pc->height = 1;
   } else {
@@ -128,27 +124,25 @@ PCLPC2::Ptr _pclpc2_from_ndarray(const py::array& arr,
   }
 
   const uint8_t* arr_begin = reinterpret_cast<const uint8_t*>(arr.data());
-  const uint8_t* arr_end = reinterpret_cast<const uint8_t*>(arr.data())+arr.nbytes();
+  const uint8_t* arr_end =
+      reinterpret_cast<const uint8_t*>(arr.data()) + arr.nbytes();
   // TODO is it even possible to avoid copy here?
   pc->data.insert(pc->data.end(), arr_begin, arr_end);
   return pc;
 }
 
-
-template<typename PointT>
+template <typename PointT>
 struct FieldAdder {
   FieldAdder(py::list& names,
              py::list& formats,
              py::list& offsets,
-             std::vector<int>& sizes) :
-      names_(names),
-      formats_(formats),
-      offsets_(offsets),
-      sizes_(sizes) { }
+             std::vector<int>& sizes)
+      : names_(names), formats_(formats), offsets_(offsets), sizes_(sizes) {}
 
-  template<typename U> void operator() () {
+  template <typename U>
+  void operator()() {
     names_.append(pcl::traits::name<PointT, U>::value);
-    //offsets_.append(pcl::traits::offset<PointT, U>::value);
+    // offsets_.append(pcl::traits::offset<PointT, U>::value);
     pcl::traits::offset<PointT, U> offset;
     size_t offset_value = offset.value;
     offsets_.append(offset_value);
@@ -183,28 +177,25 @@ struct FieldAdder {
         break;
     }
   }
-  py::list& names_, formats_, offsets_;
+  py::list &names_, formats_, offsets_;
   std::vector<int>& sizes_;
 };
 
-
 template <class PointT>
 py::array pointcloud_to_ndarray(const pcl::PointCloud<PointT>& pc) {
-  //using PointT = PointCloudT::PointType;
+  // using PointT = PointCloudT::PointType;
 
   py::list names, formats, offsets;
   std::vector<int> sizes;
   FieldAdder<PointT> field_adder(names, formats, offsets, sizes);
-  pcl::for_each_type<typename pcl::traits::fieldList<PointT>::type>(field_adder);
+  pcl::for_each_type<typename pcl::traits::fieldList<PointT>::type>(
+      field_adder);
   int itemsize = 0;
   for (int it : sizes) {
     itemsize += it;
   }
 
-  py::dtype dt(names,
-               formats,
-               offsets,
-               itemsize);
+  py::dtype dt(names, formats, offsets, itemsize);
 
   std::vector<ssize_t> shape, strides;
   // two cases - structured vs unstructured
@@ -219,21 +210,17 @@ py::array pointcloud_to_ndarray(const pcl::PointCloud<PointT>& pc) {
   }
   // TODO figure out object/handle for refcounting
   py::object obj(py::cast(pc));
-  py::array arr(dt,
-                shape,
-                strides,
-                reinterpret_cast<const uint8_t*>(&pc.points[0]),
-                obj);
+  py::array arr(
+      dt, shape, strides, reinterpret_cast<const uint8_t*>(&pc.points[0]), obj);
   return arr;
-
 }
-
 
 template <class PointT>
 py::array pointcloud_to_ndarray2(const pcl::PointCloud<PointT>& pc) {
   std::vector<pcl::PCLPointField> fields;
   pcl::detail::FieldAdder<PointT> field_adder(fields);
-  pcl::for_each_type<typename pcl::traits::fieldList<PointT>::type>(field_adder);
+  pcl::for_each_type<typename pcl::traits::fieldList<PointT>::type>(
+      field_adder);
   py::dtype dt = _pcl_pointfields_to_dt(fields, sizeof(PointT));
 
   std::vector<ssize_t> shape, strides;
@@ -244,14 +231,14 @@ py::array pointcloud_to_ndarray2(const pcl::PointCloud<PointT>& pc) {
   } else {
     shape.push_back(pc.height);
     shape.push_back(pc.width);
-    strides.push_back(sizeof(PointT)*pc.width);
+    strides.push_back(sizeof(PointT) * pc.width);
     strides.push_back(sizeof(PointT));
   }
   // TODO figure out object/handle for refcounting
   py::object obj(py::cast(pc));
-  return py::array(dt, shape, strides, reinterpret_cast<const uint8_t*>(&pc.points[0]), obj);
+  return py::array(
+      dt, shape, strides, reinterpret_cast<const uint8_t*>(&pc.points[0]), obj);
 }
-
 
 template <class PointCloudT>
 void export_pointcloud(py::module& m, const char* name) {
@@ -266,51 +253,62 @@ void export_pointcloud(py::module& m, const char* name) {
       .def("size", &PointCloudT::size)
       .def("clear", &PointCloudT::clear)
       .def("is_organized", &PointCloudT::isOrganized)
-      .def("get_MatrixXfMap", [](const PointCloudT& self) { return self.getMatrixXfMap(); })
-      .def("to_pclpc2", [](const PointCloudT& self) {
-        pcl::PCLPointCloud2::Ptr out(new PCLPC2);
-        pcl::toPCLPointCloud2(self, *out);
-        return out;
-      })
-      .def("to_ndarray", [](PointCloudT& self) {
-        pcl::PCLPointCloud2 tmp;
-        pcl::toPCLPointCloud2(self, tmp);
-        // avoid deallocation when tmp goes out of scope
-        // TODO should I use self as handle instead?
-        py::array out = pclpc2_to_ndarray(tmp, false);
-        return out;
-      })
-      .def("to_ndarray1", [](PointCloudT& self) {
-        return pointcloud_to_ndarray<typename PointCloudT::PointType>(self);
-      })
-      .def("to_ndarray2", [](PointCloudT& self) {
-        return pointcloud_to_ndarray2<typename PointCloudT::PointType>(self);
-      })
-      .def_static("from_pclpc2", [](const PCLPC2& msg) {
-        typename PointCloudT::Ptr pc(new PointCloudT);
-        pcl::fromPCLPointCloud2(msg, *pc);
-        return pc;
-      })
+      .def("get_MatrixXfMap",
+           [](const PointCloudT& self) { return self.getMatrixXfMap(); })
+      .def("to_pclpc2",
+           [](const PointCloudT& self) {
+             pcl::PCLPointCloud2::Ptr out(new PCLPC2);
+             pcl::toPCLPointCloud2(self, *out);
+             return out;
+           })
+      .def("to_ndarray",
+           [](PointCloudT& self) {
+             pcl::PCLPointCloud2 tmp;
+             pcl::toPCLPointCloud2(self, tmp);
+             // avoid deallocation when tmp goes out of scope
+             // TODO should I use self as handle instead?
+             py::array out = pclpc2_to_ndarray(tmp, false);
+             return out;
+           })
+      .def(
+          "to_ndarray1",
+          [](PointCloudT& self) {
+            return pointcloud_to_ndarray<typename PointCloudT::PointType>(self);
+          })
+      .def("to_ndarray2",
+           [](PointCloudT& self) {
+             return pointcloud_to_ndarray2<typename PointCloudT::PointType>(
+                 self);
+           })
+      .def_static("from_pclpc2",
+                  [](const PCLPC2& msg) {
+                    typename PointCloudT::Ptr pc(new PointCloudT);
+                    pcl::fromPCLPointCloud2(msg, *pc);
+                    return pc;
+                  })
       .def("empty", &PointCloudT::empty)
-      .def("cat", [](PointCloudT& self, const PointCloudT& other) {
-           return self + other;
-      })
+      .def("cat",
+           [](PointCloudT& self, const PointCloudT& other) {
+             return self + other;
+           })
       .def("swap", &PointCloudT::swap)
-      .def("__repr__", [](const PointCloudT& self) {
-           std::stringstream ss;
-           ss << "PointCloudT: " << "\n";
-           ss << self;
-           return ss.str();
-      })
-      .def("copy", [](const PointCloudT& self) {
-           typename PointCloudT::Ptr pc(new PointCloudT(self));
-           return pc;
-      })
+      .def("__repr__",
+           [](const PointCloudT& self) {
+             std::stringstream ss;
+             ss << "PointCloudT: "
+                << "\n";
+             ss << self;
+             return ss.str();
+           })
+      .def("copy",
+           [](const PointCloudT& self) {
+             typename PointCloudT::Ptr pc(new PointCloudT(self));
+             return pc;
+           })
       //.def("set_from_ndarray", &set_pc_from_ndarray<PointCloudT>)
       //.def_buffer(&pcxyz_to_buffer_info);
       ;
 }
-
 
 void export_pclpointcloud2(py::module& m) {
   py::class_<pcl::PCLPointField> PCLPointField(m, "PCLPointField");
@@ -318,9 +316,9 @@ void export_pclpointcloud2(py::module& m) {
       .def_readwrite("name", &pcl::PCLPointField::name)
       .def_readwrite("offset", &pcl::PCLPointField::offset)
       .def_readwrite("datatype", &pcl::PCLPointField::datatype)
-      .def_readwrite("count", &pcl::PCLPointField::count)
-      ;
-py::enum_<pcl::PCLPointField::PointFieldTypes>(PCLPointField, "PointFieldTypes")
+      .def_readwrite("count", &pcl::PCLPointField::count);
+  py::enum_<pcl::PCLPointField::PointFieldTypes>(PCLPointField,
+                                                 "PointFieldTypes")
       .value("INT8", pcl::PCLPointField::INT8)
       .value("UINT8", pcl::PCLPointField::UINT8)
       .value("INT16", pcl::PCLPointField::INT16)
@@ -329,8 +327,7 @@ py::enum_<pcl::PCLPointField::PointFieldTypes>(PCLPointField, "PointFieldTypes")
       .value("UINT32", pcl::PCLPointField::UINT32)
       .value("FLOAT32", pcl::PCLPointField::FLOAT32)
       .value("FLOAT64", pcl::PCLPointField::FLOAT64)
-      .export_values()
-      ;
+      .export_values();
 
   py::class_<PCLPC2, PCLPC2::Ptr>(m, "PCLPointCloud2")
       .def(py::init<>())
@@ -341,13 +338,14 @@ py::enum_<pcl::PCLPointField::PointFieldTypes>(PCLPointField, "PointFieldTypes")
       .def_readwrite("point_step", &PCLPC2::point_step)
       .def_readwrite("row_step", &PCLPC2::row_step)
       .def_readwrite("is_dense", &PCLPC2::is_dense)
-      .def("to_ndarray", &pclpc2_to_ndarray, py::arg("use_handle")=true)
+      .def("to_ndarray", &pclpc2_to_ndarray, py::arg("use_handle") = true)
       .def_static("from_ndarray", &_pclpc2_from_ndarray)
-      .def("copy", [](const PCLPC2& self) {
-           PCLPC2::Ptr pc2(new PCLPC2(self));
-           return pc2;
-      })
-	    .def("info", [](const PCLPC2& pc) {
+      .def("copy",
+           [](const PCLPC2& self) {
+             PCLPC2::Ptr pc2(new PCLPC2(self));
+             return pc2;
+           })
+      .def("info", [](const PCLPC2& pc) {
         std::stringstream s;
         s << "PCLPointCloud2:" << std::endl;
         s << "height: ";
@@ -361,15 +359,15 @@ py::enum_<pcl::PCLPointField::PointFieldTypes>(PCLPointField, "PointFieldTypes")
         s << "is_dense: ";
         s << "  " << pc.is_dense << std::endl;
         s << "fields[]" << std::endl;
-        for (size_t i = 0; i < pc.fields.size (); ++i) {
+        for (size_t i = 0; i < pc.fields.size(); ++i) {
           s << "  fields[" << i << "]: " << std::endl;
           s << "    name: " << pc.fields[i].name << std::endl;
           s << "    offset: " << pc.fields[i].offset << std::endl;
           s << "    datatype: " << int(pc.fields[i].datatype) << std::endl;
           s << "    count: " << pc.fields[i].count << std::endl;
         }
-        return s.str();})
-     ;
+        return s.str();
+      });
 }
 
 void export_quaternion(py::module& m) {
@@ -377,7 +375,10 @@ void export_quaternion(py::module& m) {
 
   py::class_<Quat>(m, "Quaternionf")
       .def(py::init<float, float, float, float>(),
-           py::arg("w")=1.0, py::arg("x")=0., py::arg("y")=0., py::arg("z")=0.)
+           py::arg("w") = 1.0,
+           py::arg("x") = 0.,
+           py::arg("y") = 0.,
+           py::arg("z") = 0.)
       .def(py::init<Quat>())
       .def_property("w",
                     [](const Quat& q) { return q.w(); },
@@ -392,51 +393,59 @@ void export_quaternion(py::module& m) {
                     [](const Quat& q) { return q.z(); },
                     [](Quat& q, float z) { q.z() = z; })
       .def("as_tuple_wxyz",
-           [](const Quat& q) { return py::make_tuple(q.w(), q.x(), q.y(), q.z()); })
+           [](const Quat& q) {
+             return py::make_tuple(q.w(), q.x(), q.y(), q.z());
+           })
       .def("as_tuple_xyzw",
-           [](const Quat& q) { return py::make_tuple(q.x(), q.y(), q.z(), q.w()); })
-      .def("normalize",
-           [](Quat& q) { q.normalize(); })
-      .def("inverse",
-           [](const Quat& q) { return q.inverse(); })
-      .def("norm",
-           [](const Quat& q) { return q.norm(); })
-      .def("set_identity",
-           [](Quat& q) { q.setIdentity(); })
+           [](const Quat& q) {
+             return py::make_tuple(q.x(), q.y(), q.z(), q.w());
+           })
+      .def("normalize", [](Quat& q) { q.normalize(); })
+      .def("inverse", [](const Quat& q) { return q.inverse(); })
+      .def("norm", [](const Quat& q) { return q.norm(); })
+      .def("set_identity", [](Quat& q) { q.setIdentity(); })
       .def("to_rotation_matrix",
            [](const Quat& q) { return q.toRotationMatrix(); })
-      .def("coeffs",
-           [](const Quat& q) { return q.coeffs(); })
+      .def("coeffs", [](const Quat& q) { return q.coeffs(); })
       .def("angular_distance",
-           [](const Quat& self, const Quat& other) { return self.angularDistance(other); })
+           [](const Quat& self, const Quat& other) {
+             return self.angularDistance(other);
+           })
       .def("__repr__",
            [](const Quat& q) {
-            return tfm::format("Quaternionf(w=%.4f, x=%.4f, y=%.4f, z=%.4f)",
-                               q.w(), q.x(), q.y(), q.z());})
+             return tfm::format("Quaternionf(w=%.4f, x=%.4f, y=%.4f, z=%.4f)",
+                                q.w(),
+                                q.x(),
+                                q.y(),
+                                q.z());
+           })
+#if 0
       .def_static("unit_random",
            []() { return Eigen::Quaternionf::UnitRandom(); })
+#endif
       .def_static("from_angle_axis",
-           [](float angle, const Eigen::Vector3f& axis) { return Quat(Eigen::AngleAxisf(angle, axis)); })
-      ;
-
+                  [](float angle, const Eigen::Vector3f& axis) {
+                    return Quat(Eigen::AngleAxisf(angle, axis));
+                  });
 }
 
-
-PCXYZ::Ptr xyz_img_to_pc(const ndarray2f& xyz_img,
-                         bool skip_nan) {
+PCXYZ::Ptr xyz_img_to_pc(const ndarray2f& xyz_img, bool skip_nan) {
   size_t height = xyz_img.shape(0);
   size_t width = xyz_img.shape(1);
   PCXYZ::Ptr xyz_pc(new PCXYZ());
   auto xyz_img_buf = xyz_img.unchecked();
-  for (int v=0; v < height; ++v) {
-    for (int u=0; u < width; ++u) {
+  for (int v = 0; v < height; ++v) {
+    for (int u = 0; u < width; ++u) {
       float x = xyz_img_buf(v, u, 0);
       float y = xyz_img_buf(v, u, 1);
       float z = xyz_img_buf(v, u, 2);
-      if (skip_nan && (std::isnan(x)||std::isnan(y)||std::isnan(z))) {
+      if (skip_nan && (std::isnan(x) || std::isnan(y) || std::isnan(z))) {
         continue;
       }
-      pcl::PointXYZ p; p.x = x; p.y = y; p.z = z;
+      pcl::PointXYZ p;
+      p.x = x;
+      p.y = y;
+      p.z = z;
       xyz_pc->push_back(p);
     }
   }
@@ -450,8 +459,8 @@ PCXYZ::Ptr xyz_img_to_organized_pc(const ndarray2f& xyz_img) {
   size_t width = xyz_img.shape(1);
   PCXYZ::Ptr xyz_pc(new PCXYZ());
   auto xyz_img_buf = xyz_img.unchecked();
-  for (int v=0; v < height; ++v) {
-    for (int u=0; u < width; ++u) {
+  for (int v = 0; v < height; ++v) {
+    for (int u = 0; u < width; ++u) {
       pcl::PointXYZ p;
       p.x = xyz_img_buf(v, u, 0);
       p.y = xyz_img_buf(v, u, 1);
@@ -464,7 +473,6 @@ PCXYZ::Ptr xyz_img_to_organized_pc(const ndarray2f& xyz_img) {
   return xyz_pc;
 }
 
-
 PCXYZ::Ptr ndarray_to_pcxyz(ndarrayXf arr) {
   PCXYZ::Ptr pc(new PCXYZ());
   if (arr.ndim() == 2) {
@@ -473,7 +481,7 @@ PCXYZ::Ptr ndarray_to_pcxyz(ndarrayXf arr) {
       throw py::value_error("unorganized arr must be Nx3");
     }
     auto arr_buf = arr.unchecked<2>();
-    for (int i=0; i < arr.shape(0); ++i) {
+    for (int i = 0; i < arr.shape(0); ++i) {
       pcl::PointXYZ p;
       p.x = arr_buf(i, 0);
       p.y = arr_buf(i, 1);
@@ -488,8 +496,8 @@ PCXYZ::Ptr ndarray_to_pcxyz(ndarrayXf arr) {
       throw py::value_error("organized pc array must be HxWx3");
     }
     auto arr_buf = arr.unchecked<3>();
-    for (int i=0; i < arr.shape(0); ++i) {
-      for (int j=0; j < arr.shape(1); ++j) {
+    for (int i = 0; i < arr.shape(0); ++i) {
+      for (int j = 0; j < arr.shape(1); ++j) {
         pcl::PointXYZ p;
         p.x = arr_buf(i, j, 0);
         p.y = arr_buf(i, j, 1);
@@ -503,28 +511,20 @@ PCXYZ::Ptr ndarray_to_pcxyz(ndarrayXf arr) {
   return pc;
 }
 
-
 void export_pointcloud(py::module& m) {
   export_quaternion(m);
   export_pointcloud<pcl::PointCloud<pcl::PointXYZ>>(m, "PointCloudXYZ");
   export_pointcloud<pcl::PointCloud<pcl::PointXYZRGB>>(m, "PointCloudXYZRGB");
   export_pclpointcloud2(m);
 
-  m.def("xyz_img_to_pc",
-        &xyz_img_to_pc,
-        py::arg("xyz_img"),
-        py::arg("skip_nan"));
+  m.def(
+      "xyz_img_to_pc", &xyz_img_to_pc, py::arg("xyz_img"), py::arg("skip_nan"));
 
-  m.def("xyz_img_to_organized_pc",
-        &xyz_img_to_organized_pc,
-        py::arg("xyz_img"));
+  m.def(
+      "xyz_img_to_organized_pc", &xyz_img_to_organized_pc, py::arg("xyz_img"));
 
-  m.def("ndarray_to_pcxyz",
-        &ndarray_to_pcxyz,
-        py::arg("arr"));
+  m.def("ndarray_to_pcxyz", &ndarray_to_pcxyz, py::arg("arr"));
 
-  m.def("_pclpc2_from_ndarray",
-        &_pclpc2_from_ndarray);
+  m.def("_pclpc2_from_ndarray", &_pclpc2_from_ndarray);
 }
-
 }
